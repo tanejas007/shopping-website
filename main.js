@@ -1,3 +1,7 @@
+// if(process.env.NODE_ENV !== 'production'){
+//     require('dotenv').config()
+// }
+
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -5,15 +9,17 @@ const websModel = require('./config/database');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const flash = require('express-flash');
 const saltRounds = 10;
-const passport = require(passport);
-// const cart = require('./router/cart');
-// const expressValidator = require('expressValidator');
-// connect to db
+const passport = require('passport');
 const router = express.Router();
 // const website = websModel.find({});
 const initializePassport = require('.//passport-config');
-initializePassport(passport);
+initializePassport(
+    passport,
+    email => users.find(user => user.email === email),
+    id => users.find(user => user.id === id)
+    );
 const app = express();
 app.use("/public",express.static('./public'));
 app.use(express.urlencoded({extended: false}));
@@ -28,10 +34,10 @@ app.use(bodyParser.json());
 app.use(session({
     secret: 'keyboard cat',
     resave: false,
-    saveUninitialized: true,
-    cookie: {secure: true}
+    saveUninitialized: false
 }));
-
+app.use(passport.initialize());
+app.use(passport.session());
 //  express validator
 // app.use(expressValidator({
 //     errorFormatter: function(param, msg, value){
@@ -51,40 +57,37 @@ app.use(session({
 // }));
 
 //  express messages middleware
-app.use(require('connect-flash')());
+app.use(flash());
 app.use(function(req,res,next){
     res.locals.messages = require('express-messages')(req,res);
     next();
 });
-
-
 app.get('*' , function(req,res,next){
     res.locals.cart = req.session.cart;
     next();
 });
 
-app.use("/index",express.static('./index'));
+app.use("/indexx",express.static('./indexx'));
 app.get("/" , (req,res)=> {
-    res.sendFile(__dirname + '/homepage.html');
+    res.sendFile(__dirname + '/index.html',{name: req.user.name});
 });
-app.get("/index/about" , (req,res)=> {
-    res.sendFile(__dirname + '/index/about.html');
+app.get("/indexx/about" , (req,res)=> {
+    res.sendFile(__dirname + '/indexx/about.html');
 });
-app.get("/index/cart" , (req,res,next)=> {
+app.get("/indexx/cart" , (req,res,next)=> {
     website.exec(function(err,data){
         if (err)  throwerr;
-        console.log(data);
-        res.sendFile(__dirname + '/index/cart.html',{data});
+        res.sendFile(__dirname + '/indexx/cart.html',{data});
     });
 });
-app.get("/index/shopnow", (req,res)=>{
-    res.sendFile(__dirname + '/index/shopnow.html');
+app.get("/indexx/shopnow", (req,res)=>{
+    res.sendFile(__dirname + '/indexx/shopnow.html');
 });
 
-app.get("/index/register", (req,res)=>{
-    res.sendFile(__dirname + '/index/register.html');
+app.get("/indexx/register", (req,res)=>{
+    res.sendFile(__dirname + '/indexx/register.html');
 });
-app.post("/index/register", async(req,res)=>{
+app.post("/indexx/register", async(req,res)=>{
     try {
         const hashedPassword = await bcrypt.hash(req.body.password,saltRounds)
         users.push({
@@ -93,21 +96,23 @@ app.post("/index/register", async(req,res)=>{
                 email:req.body.email,
                 password:hashedPassword,
             })
-            res.redirect('/homepage')
+            res.redirect('/index')
     } catch  {
-        res.redirect(__dirname +'/index/register.html')
+        res.redirect(__dirname +'/indexx/register.html')
     }
     console.log(users);
 });
 
-app.get("/index/login", (req,res)=>{
-    res.sendFile(__dirname + '/index/login.html');
+app.get("/indexx/login", (req,res)=>{
+    res.sendFile(__dirname + '/indexx/login.html');
 });
-app.post("/index/login",(req,res)=>{
-
-});
-app.get("/homepage", (req,res)=>{
-    res.sendFile(__dirname + '/homepage.html');
+app.post("/indexx/login",passport.authenticate('local',{
+    successRedirect: '/index.html',
+    failureRedirect: '/indexx/login.html',
+    failureFlash: true
+}));
+app.get("/", (req,res)=>{
+    res.sendFile(__dirname + '/index.html');
 });
 
 // app.get("/login", (req,res)=>{
